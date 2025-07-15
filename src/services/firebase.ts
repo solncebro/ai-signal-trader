@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import pinoLogger from "./logger";
+import { firebaseConfig } from "../config";
 
 export interface TradingConfig {
   isEnabled: boolean;
@@ -33,11 +34,11 @@ export class FirebaseService {
       if (!admin.apps.length) {
         admin.initializeApp({
           credential: admin.credential.cert({
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-            projectId: process.env.FIREBASE_PROJECT_ID,
+            clientEmail: firebaseConfig.clientEmail,
+            privateKey: firebaseConfig.privateKey?.replace(/\\n/g, "\n"),
+            projectId: firebaseConfig.projectId,
           }),
-          projectId: process.env.FIREBASE_PROJECT_ID,
+          projectId: firebaseConfig.projectId,
         });
       }
 

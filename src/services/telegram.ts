@@ -12,12 +12,8 @@ export class TelegramService {
   private notificationService: NotificationService;
 
   constructor() {
-    this.validateConfig();
-
     this.notificationService = new NotificationService();
-    const sessionString = process.env.TELEGRAM_APP_SESSION || "";
-    this.session = new StringSession(sessionString);
-
+    this.session = new StringSession(telegramConfig.appSession);
     this.client = new TelegramClient(
       this.session,
       telegramConfig.apiId,
@@ -26,20 +22,6 @@ export class TelegramService {
         connectionRetries: 5,
       }
     );
-  }
-
-  private validateConfig(): void {
-    if (!telegramConfig.apiId || telegramConfig.apiId <= 0) {
-      throw new Error("Invalid Telegram API ID");
-    }
-
-    if (!telegramConfig.apiHash || telegramConfig.apiHash.length === 0) {
-      throw new Error("Invalid Telegram API Hash");
-    }
-
-    if (!telegramConfig.phone || telegramConfig.phone.length === 0) {
-      throw new Error("Invalid phone number");
-    }
   }
 
   async connect(): Promise<void> {

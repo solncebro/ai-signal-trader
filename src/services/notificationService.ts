@@ -1,14 +1,15 @@
 import axios from "axios";
 import { TradingSignal } from "../types";
 import pinoLogger from "./logger";
+import { telegramBotConfig } from "../config";
 
 export class NotificationService {
   private botToken: string;
   private chatId: string;
 
   constructor() {
-    this.botToken = process.env.TELEGRAM_BOT_TOKEN || "";
-    this.chatId = process.env.TELEGRAM_BOT_CHAT_ID || "";
+    this.botToken = telegramBotConfig.botToken;
+    this.chatId = telegramBotConfig.chatId;
   }
 
   async sendLogMessage(message: string): Promise<void> {

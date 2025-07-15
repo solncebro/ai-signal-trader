@@ -57,4 +57,5 @@ export interface TelegramConfig {
   apiId: number;
   apiHash: string;
   phone: string;
+  appSession: string;
 }
