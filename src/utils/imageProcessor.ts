@@ -48,7 +48,7 @@ export class ImageProcessor {
       return base64Image;
     }
 
-    pinoLogger.warn(
+    pinoLogger.info(
       `Image size (${currentSize} bytes) exceeds limit (${maxSizeBytes} bytes)`
     );
 

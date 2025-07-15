@@ -2,6 +2,8 @@ import axios from "axios";
 import { TradingSignal } from "../types";
 import pinoLogger from "./logger";
 import { telegramBotConfig } from "../config";
+import { getCurrentDate } from "../utils/date";
+import { truncateText } from "../utils/text";
 
 export class NotificationService {
   private botToken: string;
@@ -14,7 +16,7 @@ export class NotificationService {
 
   async sendLogMessage(message: string): Promise<void> {
     if (!this.botToken || !this.chatId) {
-      pinoLogger.warn(
+      pinoLogger.info(
         "Bot token or chat ID not configured, skipping notification"
       );
 
@@ -37,13 +39,13 @@ export class NotificationService {
 
   async sendSignalResult(
     signal: TradingSignal,
-    success: boolean,
+    isSuccess: boolean,
     details?: string
   ): Promise<void> {
-    const timestamp = new Date().toISOString();
+    const date = getCurrentDate();
 
     let message = `<b>🔔 Signal Processing Result</b>\n\n`;
-    message += `📅 <b>Time:</b> ${timestamp}\n`;
+    message += `📅 <b>Time:</b> ${date}\n`;
     message += `📱 <b>Source:</b> Chat ${signal.sourceChatId}\n`;
     message += `📊 <b>Signal:</b> ${signal.action?.toUpperCase()} ${
       signal.symbol
@@ -52,12 +54,9 @@ export class NotificationService {
     message += `🎯 <b>Confidence:</b> ${(signal.confidence * 100).toFixed(
       1
     )}%\n`;
-    message += `📝 <b>Message:</b> ${signal.rawMessage.substring(
-      0,
-      100
-    )}...\n\n`;
+    message += `📝 <b>Message:</b> ${truncateText(signal.rawMessage, 100)}\n\n`;
 
-    if (success) {
+    if (isSuccess) {
       message += `✅ <b>Status:</b> Successfully executed\n`;
     } else {
       message += `❌ <b>Status:</b> Failed to execute\n`;
@@ -71,10 +70,10 @@ export class NotificationService {
   }
 
   async sendErrorNotification(error: string, context?: string): Promise<void> {
-    const timestamp = new Date().toISOString();
+    const date = getCurrentDate();
 
     let message = `<b>🚨 Error Notification</b>\n\n`;
-    message += `📅 <b>Time:</b> ${timestamp}\n`;
+    message += `📅 <b>Time:</b> ${date}\n`;
 
     if (context) {
       message += `🔍 <b>Context:</b> ${context}\n`;
@@ -86,21 +85,19 @@ export class NotificationService {
   }
 
   async sendStartupNotification(): Promise<void> {
-    const timestamp = new Date().toISOString();
+    const date = getCurrentDate();
 
     let message = `<b>🚀 Signal Trader Started</b>\n\n`;
-    message += `📅 <b>Time:</b> ${timestamp}\n`;
-    message += `✅ <b>Status:</b> Ready to process signals`;
+    message += `📅 <b>Time:</b> ${date}\n`;
 
     await this.sendLogMessage(message);
   }
 
   async sendShutdownNotification(): Promise<void> {
-    const timestamp = new Date().toISOString();
+    const date = getCurrentDate();
 
     let message = `<b>🛑 Signal Trader Stopped</b>\n\n`;
-    message += `📅 <b>Time:</b> ${timestamp}\n`;
-    message += `⏹️ <b>Status:</b> Shutdown complete`;
+    message += `📅 <b>Time:</b> ${date}\n`;
 
     await this.sendLogMessage(message);
   }

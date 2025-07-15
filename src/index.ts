@@ -100,22 +100,22 @@ class SignalTrader {
       pinoLogger.info(
         `Executing signal: ${signal.action} ${signal.symbol} at ${signal.price}`
       );
-      const success = await this.exchangeService.executeSignal(signal);
+      const isSuccess = await this.exchangeService.executeSignal(signal);
 
-      if (success) {
+      if (isSuccess) {
         pinoLogger.info(
           `Successfully executed signal: ${signal.action} ${signal.symbol}`
         );
 
-        await this.notificationService.sendSignalResult(signal, true);
+        await this.notificationService.sendSignalResult(signal, isSuccess);
       } else {
-        pinoLogger.warn(
+        pinoLogger.info(
           `Signal execution failed: ${signal.action} ${signal.symbol}`
         );
 
         await this.notificationService.sendSignalResult(
           signal,
-          false,
+          isSuccess,
           "Order execution failed"
         );
       }

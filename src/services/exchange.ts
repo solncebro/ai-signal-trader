@@ -34,7 +34,7 @@ export class ExchangeService {
       }
     }
 
-    pinoLogger.warn(`No exchange account found for chat ${chatId}`);
+    pinoLogger.info(`No exchange account found for chat ${chatId}`);
 
     return null;
   }
