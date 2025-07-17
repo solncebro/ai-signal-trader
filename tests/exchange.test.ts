@@ -66,7 +66,6 @@ describe("ExchangeService", () => {
         symbol: "BTC/USDT",
         orderType: "limit" as const,
         price: 45000,
-        isSignal: true,
         confidence: 0.8,
       };
 
@@ -84,7 +83,6 @@ describe("ExchangeService", () => {
         action: "sell",
         symbol: "ETH/USDT",
         orderType: "market" as const,
-        isSignal: true,
         confidence: 0.8,
       };
 
@@ -100,7 +98,6 @@ describe("ExchangeService", () => {
   describe("buildOrderRequest", () => {
     it("should build buy order request with long position", () => {
       const signal: TradingSignal = {
-        isSignal: true,
         action: "buy",
         symbol: "BTC/USDT",
         price: 45000,
@@ -119,7 +116,6 @@ describe("ExchangeService", () => {
 
     it("should build sell order request with short position", () => {
       const signal: TradingSignal = {
-        isSignal: true,
         action: "sell",
         symbol: "ETH/USDT",
         orderType: "market",
@@ -136,7 +132,6 @@ describe("ExchangeService", () => {
 
     it("should use quantity from signal if provided", () => {
       const signal: TradingSignal = {
-        isSignal: true,
         action: "buy",
         symbol: "BTC/USDT",
         price: 45000,
@@ -180,7 +175,6 @@ describe("ExchangeService", () => {
   describe("calculatePositionSize", () => {
     it("should use quantity from signal if provided", () => {
       const signal: TradingSignal = {
-        isSignal: true,
         action: "buy",
         symbol: "BTC/USDT",
         quantity: 0.5,
@@ -195,7 +189,6 @@ describe("ExchangeService", () => {
 
     it("should calculate size based on price if no quantity provided", () => {
       const signal: TradingSignal = {
-        isSignal: true,
         action: "buy",
         symbol: "BTC/USDT",
         price: 45000,

@@ -24,6 +24,12 @@ export class SignalAnalyzer {
   async analyzeMessageForMultipleSignals(
     message: TelegramMessage
   ): Promise<MultipleTradingSignals> {
+    const defaultMultipleTradingSignals: MultipleTradingSignals = {
+      signalList: [],
+      sourceChatId: message.chatId,
+      rawMessage: message.text ?? "",
+    };
+
     try {
       const prompt = this.buildPromptForMultipleSignals(message);
 
@@ -42,7 +48,6 @@ export class SignalAnalyzer {
             {
               "signalList": [
                 {
-                  "isSignal": boolean,
                   "action": "buy" | "sell" | "close" | Nullable<string>,
                   "symbol": "BTC/USDT" | Nullable<string>,
                   "price": number | Nullable<number>,
@@ -98,7 +103,6 @@ export class SignalAnalyzer {
       const signalList: TradingSignal[] = (parsed.signalList ?? []).map(
         (signal: Partial<TradingSignal>) => {
           const {
-            isSignal,
             price,
             stopLoss,
             takeProfit,
@@ -110,7 +114,6 @@ export class SignalAnalyzer {
 
           return {
             ...signal,
-            isSignal: Boolean(isSignal),
             price: ensureNumber(price),
             stopLoss: ensureNumber(stopLoss),
             takeProfit: ensureNumber(takeProfit),
@@ -123,9 +126,8 @@ export class SignalAnalyzer {
       );
 
       return {
+        ...defaultMultipleTradingSignals,
         signalList,
-        sourceChatId: message.chatId,
-        rawMessage: message.text ?? "",
       };
     } catch (error) {
       pinoLogger.error(
@@ -133,11 +135,7 @@ export class SignalAnalyzer {
         error
       );
 
-      return {
-        signalList: [],
-        sourceChatId: message.chatId,
-        rawMessage: message.text ?? "",
-      };
+      return defaultMultipleTradingSignals;
     }
   }
 

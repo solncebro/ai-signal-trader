@@ -197,7 +197,7 @@ export class ExchangeService {
       return false;
     }
 
-    if (!signal.isSignal || !signal.action || !signal.symbol) {
+    if (!signal.action || !signal.symbol) {
       pinoLogger.info("Invalid signal, skipping execution");
 
       return false;

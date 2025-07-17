@@ -4,6 +4,7 @@ import { SignalAnalyzer } from "./services/signalAnalyzer";
 import { TelegramService } from "./services/telegram";
 import { TelegramMessage, TradingSignal, SendSignalResultArgs } from "./types";
 import pinoLogger from "./services/logger";
+import { isSignalValid } from "./utils/other";
 
 class SignalTrader {
   private telegramService: TelegramService;
@@ -59,39 +60,33 @@ class SignalTrader {
         `Received message from chat ${message.chatId}: ${message.text}`
       );
 
-      const multipleSignals =
+      const { signalList, sourceChatId, rawMessage } =
         await this.signalAnalyzer.analyzeMessageForMultipleSignals(message);
 
-      if (multipleSignals.signalList.length === 0) {
-        pinoLogger.info("Message is not a valid trading signal");
+      if (signalList.length === 0) {
+        pinoLogger.info("Message has no valid trading signal");
 
         return;
       }
 
-      pinoLogger.info(
-        `Found ${multipleSignals.signalList.length} signal(s) in message`
-      );
+      pinoLogger.info(`Found ${signalList.length} signals in message`);
 
-      for (let i = 0; i < multipleSignals.signalList.length; i++) {
-        const signal = multipleSignals.signalList[i];
+      for (let i = 0; i < signalList.length; i++) {
+        const signal = signalList[i];
 
-        if (signal.isSignal && signal.confidence > 0.7) {
+        if (isSignalValid(signal)) {
           pinoLogger.info(
-            `Valid signal ${i + 1}/${multipleSignals.signalList.length}: ${
-              signal.action
-            } ${signal.symbol}`
+            `Valid signal ${i + 1}/${signalList.length}: ${signal.action} ${
+              signal.symbol
+            }`
           );
 
-          await this.executeSignal(
-            signal,
-            multipleSignals.sourceChatId,
-            multipleSignals.rawMessage
-          );
+          await this.executeSignal(signal, sourceChatId, rawMessage);
         } else {
           pinoLogger.info(
-            `Signal ${i + 1}/${
-              multipleSignals.signalList.length
-            } is not valid or has low confidence`
+            `Signal ${i + 1}/${signalList.length} has low confidence: ${
+              signal.confidence
+            }`
           );
         }
       }

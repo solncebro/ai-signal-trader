@@ -48,7 +48,6 @@ describe("SignalAnalyzer", () => {
               content: JSON.stringify({
                 signalList: [
                   {
-                    isSignal: true,
                     action: "buy",
                     symbol: "BTC/USDT",
                     price: 45000,
@@ -70,7 +69,7 @@ describe("SignalAnalyzer", () => {
       const result = await analyzer.analyzeMessageForMultipleSignals(message);
 
       expect(result.signalList).toHaveLength(1);
-      expect(result.signalList[0].isSignal).toBe(true);
+
       expect(result.signalList[0].action).toBe("buy");
       expect(result.signalList[0].symbol).toBe("BTC/USDT");
 
@@ -103,7 +102,6 @@ describe("SignalAnalyzer", () => {
               content: JSON.stringify({
                 signalList: [
                   {
-                    isSignal: true,
                     action: "buy",
                     symbol: "BTC/USDT",
                     price: 45000,
@@ -111,7 +109,6 @@ describe("SignalAnalyzer", () => {
                     confidence: 0.9,
                   },
                   {
-                    isSignal: true,
                     action: "sell",
                     symbol: "ETH/USDT",
                     price: 3000,
@@ -167,7 +164,6 @@ describe("SignalAnalyzer", () => {
               content: JSON.stringify({
                 signalList: [
                   {
-                    isSignal: true,
                     action: "buy",
                     symbol: "BTC/USDT",
                     price: 45000,
@@ -175,7 +171,6 @@ describe("SignalAnalyzer", () => {
                     confidence: 0.9,
                   },
                   {
-                    isSignal: true,
                     action: "sell",
                     symbol: "BTC/USDT",
                     price: 47000,

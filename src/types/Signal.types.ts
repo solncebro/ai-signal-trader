@@ -1,7 +1,6 @@
 import { Nullable } from "../../utils.d";
 
 export interface TradingSignal {
-  isSignal: boolean;
   action?: Nullable<"buy" | "sell" | "close">;
   symbol?: Nullable<string>;
   price?: Nullable<number>;
