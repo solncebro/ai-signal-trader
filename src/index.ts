@@ -2,6 +2,7 @@ import { ExchangeService } from "./services/exchange";
 import { NotificationService } from "./services/notificationService";
 import { SignalAnalyzer } from "./services/signalAnalyzer";
 import { TelegramService } from "./services/telegram";
+import { TelegramMessage, TradingSignal } from "./types";
 import pinoLogger from "./services/logger";
 
 class SignalTrader {
@@ -14,10 +15,13 @@ class SignalTrader {
 
   constructor(userId: string) {
     this.userId = userId;
-    this.telegramService = new TelegramService();
-    this.signalAnalyzer = new SignalAnalyzer();
-    this.exchangeService = new ExchangeService(userId);
     this.notificationService = new NotificationService();
+    this.telegramService = new TelegramService(this.notificationService);
+    this.signalAnalyzer = new SignalAnalyzer();
+    this.exchangeService = new ExchangeService(
+      userId,
+      this.notificationService
+    );
   }
 
   async start(): Promise<void> {
@@ -49,30 +53,30 @@ class SignalTrader {
     }
   }
 
-  private async handleNewMessage(message: any): Promise<void> {
+  private async handleNewMessage(message: TelegramMessage): Promise<void> {
     try {
       pinoLogger.info(
-        `Received message from chat ${message.sourceChatId}: ${message.text}`
+        `Received message from chat ${message.chatId}: ${message.text}`
       );
 
       const multipleSignals =
         await this.signalAnalyzer.analyzeMessageForMultipleSignals(message);
 
-      if (multipleSignals.signals.length === 0) {
+      if (multipleSignals.signalList.length === 0) {
         pinoLogger.info("Message is not a valid trading signal");
         return;
       }
 
       pinoLogger.info(
-        `Found ${multipleSignals.signals.length} signal(s) in message`
+        `Found ${multipleSignals.signalList.length} signal(s) in message`
       );
 
-      for (let i = 0; i < multipleSignals.signals.length; i++) {
-        const signal = multipleSignals.signals[i];
+      for (let i = 0; i < multipleSignals.signalList.length; i++) {
+        const signal = multipleSignals.signalList[i];
 
         if (signal.isSignal && signal.confidence > 0.7) {
           pinoLogger.info(
-            `Valid signal ${i + 1}/${multipleSignals.signals.length}: ${
+            `Valid signal ${i + 1}/${multipleSignals.signalList.length}: ${
               signal.action
             } ${signal.symbol}`
           );
@@ -81,7 +85,7 @@ class SignalTrader {
         } else {
           pinoLogger.info(
             `Signal ${i + 1}/${
-              multipleSignals.signals.length
+              multipleSignals.signalList.length
             } is not valid or has low confidence`
           );
         }
@@ -95,7 +99,7 @@ class SignalTrader {
     }
   }
 
-  private async executeSignal(signal: any): Promise<void> {
+  private async executeSignal(signal: TradingSignal): Promise<void> {
     try {
       pinoLogger.info(
         `Executing signal: ${signal.action} ${signal.symbol} at ${signal.price}`

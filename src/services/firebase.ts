@@ -10,12 +10,18 @@ export interface TradingConfig {
 
 export type TradingConfigCallback = (config: TradingConfig) => void;
 
+export const defaultTradingConfig: TradingConfig = {
+  isEnabled: false,
+  maxPositionSize: 100,
+  riskPercentage: 2,
+};
+
 export class FirebaseService {
   private firestoreDatabase!: admin.firestore.Firestore;
   private userId: string;
   private exchange: string;
   private tradeTypeName: string;
-  private unsubscribe: (() => void) | null = null;
+  private unsubscribe: Nullable<() => void> = null;
 
   constructor(
     userId: string,
@@ -35,7 +41,7 @@ export class FirebaseService {
         admin.initializeApp({
           credential: admin.credential.cert({
             clientEmail: firebaseConfig.clientEmail,
-            privateKey: firebaseConfig.privateKey?.replace(/\\n/g, "\n"),
+            privateKey: firebaseConfig.privateKey?.replace(/\n/g, "\n"),
             projectId: firebaseConfig.projectId,
           }),
           projectId: firebaseConfig.projectId,
@@ -53,7 +59,7 @@ export class FirebaseService {
   }
 
   private getTradingConfigPath(): string {
-    return `users/${this.userId}/exchange/${this.exchange}/tradeType/${this.tradeTypeName}/modules/signalTrader`;
+    return `users/${this.userId}/exchange/${this.exchange}/tradeType/${this.tradeTypeName}/modules/aiSignalTrader`;
   }
 
   async getTradingConfig(): Promise<TradingConfig> {
@@ -66,32 +72,17 @@ export class FirebaseService {
         pinoLogger.info("Retrieved trading config from Firebase");
 
         return {
-          isEnabled: data.isEnabled || false,
-          maxPositionSize: data.maxPositionSize || 100,
-          riskPercentage: data.riskPercentage || 2,
+          ...defaultTradingConfig,
+          ...data,
         };
       } else {
-        pinoLogger.info("Trading config not found, creating default config");
-
-        const defaultConfig: TradingConfig = {
-          isEnabled: false,
-          maxPositionSize: 100,
-          riskPercentage: 2,
-        };
-
-        await this.setTradingConfig(defaultConfig);
-
-        return defaultConfig;
+        pinoLogger.info("Trading config not found, returning default config");
       }
     } catch (error) {
       pinoLogger.error("Failed to get trading config from Firebase:", error);
-
-      return {
-        isEnabled: false,
-        maxPositionSize: 100,
-        riskPercentage: 2,
-      };
     }
+
+    return defaultTradingConfig;
   }
 
   startRealtimeUpdates(callback: TradingConfigCallback): void {
@@ -103,9 +94,8 @@ export class FirebaseService {
           if (doc.exists) {
             const data = doc.data() || {};
             const config: TradingConfig = {
-              isEnabled: data.isEnabled || false,
-              maxPositionSize: data.maxPositionSize || 100,
-              riskPercentage: data.riskPercentage || 2,
+              ...defaultTradingConfig,
+              ...data,
             };
 
             pinoLogger.info("Trading config updated in real-time:", config);
@@ -114,11 +104,7 @@ export class FirebaseService {
             pinoLogger.info(
               "Trading config document does not exist, creating default"
             );
-            this.setTradingConfig({
-              isEnabled: false,
-              maxPositionSize: 100,
-              riskPercentage: 2,
-            });
+            this.setTradingConfig(defaultTradingConfig);
           }
         },
         (error) => {

@@ -1,29 +1,26 @@
-import {
-  TelegramConfig,
-  ExchangeConfig,
-  ExchangeAccount,
-} from "../../src/types";
+import { ExchangeConfig, TelegramConfig } from "../../src/types";
 
 export const telegramConfig: TelegramConfig = {
   apiId: 123456,
   apiHash: "test_api_hash",
   phone: "+1234567890",
+  appSession: "test_app_session",
 };
 
 export const exchangeConfig: ExchangeConfig = {
   primary: {
     id: "primary",
     name: "Primary Account",
-    apiKey: "primary_api_key",
-    secret: "primary_secret",
-    allowedChatIds: [123456],
+    apiKey: "test-primary-api-key",
+    secret: "test-primary-secret",
+    allowedChatIdList: [123456],
   },
   secondary: {
     id: "secondary",
     name: "Secondary Account",
-    apiKey: "secondary_api_key",
-    secret: "secondary_secret",
-    allowedChatIds: [987654],
+    apiKey: "test-secondary-api-key",
+    secret: "test-secondary-secret",
+    allowedChatIdList: [987654],
   },
 };
 

@@ -7,21 +7,26 @@ import {
   TradingConfig,
   TradingConfigCallback,
 } from "./firebase";
+import { NotificationService } from "./notificationService";
 
 export class ExchangeService {
   private exchanges: Map<string, ccxt.binance> = new Map();
   private firebaseService: FirebaseService;
-  private tradingConfig: TradingConfig | null = null;
+  private tradingConfig: Nullable<TradingConfig> = null;
+  private notificationService: NotificationService;
 
-  constructor(userId: string) {
+  constructor(userId: string, notificationService: NotificationService) {
     this.firebaseService = new FirebaseService(userId);
+    this.notificationService = notificationService;
   }
 
-  private getExchangeForChat(chatId: number): ccxt.binance | null {
+  private getExchangeAccountServiceByChatId(
+    chatId: number
+  ): Nullable<ccxt.binance> {
     const accounts = [exchangeConfig.primary, exchangeConfig.secondary];
 
     for (const account of accounts) {
-      if (account.allowedChatIds.includes(chatId)) {
+      if (account.allowedChatIdList.includes(chatId)) {
         const exchange = this.exchanges.get(account.id);
 
         if (exchange) {
@@ -45,7 +50,7 @@ export class ExchangeService {
 
       accounts.forEach((account) => {
         if (account.apiKey && account.secret) {
-          const exchange = new ccxt.binance({
+          const accountExchange = new ccxt.binance({
             apiKey: account.apiKey,
             secret: account.secret,
             enableRateLimit: true,
@@ -55,23 +60,25 @@ export class ExchangeService {
             },
           });
 
-          this.exchanges.set(account.id, exchange);
+          this.exchanges.set(account.id, accountExchange);
           pinoLogger.info(
             `Initialized exchange: ${account.name} (${account.id})`
           );
 
-          if (account.allowedChatIds.length > 0) {
+          if (account.allowedChatIdList.length > 0) {
             pinoLogger.info(
-              `Exchange account ${
-                account.id
-              } configured for chats: ${account.allowedChatIds.join(", ")}`
+              `Account ${
+                account.name
+              } is configured for chats: ${account.allowedChatIdList.join(
+                ", "
+              )}`
             );
           }
         }
       });
 
-      for (const [accountId, exchange] of this.exchanges) {
-        await exchange.loadMarkets();
+      for (const [accountId, accountExchange] of this.exchanges) {
+        await accountExchange.loadMarkets();
 
         pinoLogger.info(
           `Connected to Binance exchange - Account: ${accountId}`
@@ -79,7 +86,7 @@ export class ExchangeService {
       }
 
       this.tradingConfig = await this.firebaseService.getTradingConfig();
-      pinoLogger.info("Trading config loaded from Firebase");
+      pinoLogger.info("Trading config loaded");
 
       this.startRealtimeUpdates();
     } catch (error) {
@@ -92,7 +99,7 @@ export class ExchangeService {
   private startRealtimeUpdates(): void {
     const configCallback: TradingConfigCallback = (config: TradingConfig) => {
       this.tradingConfig = config;
-      pinoLogger.info("Trading config updated in real-time");
+      pinoLogger.info("Trading config updated in real-time from Firebase");
     };
 
     this.firebaseService.startRealtimeUpdates(configCallback);
@@ -103,15 +110,15 @@ export class ExchangeService {
     chatId?: number
   ): Promise<number> {
     try {
-      const exchange = chatId
-        ? this.getExchangeForChat(chatId)
+      const exchangeAccountService = chatId
+        ? this.getExchangeAccountServiceByChatId(chatId)
         : this.exchanges.get("primary");
 
-      if (!exchange) {
+      if (!exchangeAccountService) {
         return 0;
       }
 
-      const balance = await exchange.fetchBalance();
+      const balance = await exchangeAccountService.fetchBalance();
 
       return balance[currency]?.free || 0;
     } catch (error) {
@@ -144,23 +151,38 @@ export class ExchangeService {
     leverage?: number,
     chatId?: number
   ): Promise<void> {
+    if (leverage === null || leverage === undefined) {
+      return;
+    }
+
     try {
-      const exchange = chatId
-        ? this.getExchangeForChat(chatId)
+      const exchangeAccountService = chatId
+        ? this.getExchangeAccountServiceByChatId(chatId)
         : this.exchanges.get("primary");
 
-      if (!exchange) {
+      if (!exchangeAccountService) {
         return;
       }
 
-      const defaultLeverage = symbol.includes("BTC") ? 5 : 3;
-      const useLeverage = leverage || defaultLeverage;
+      await exchangeAccountService.setLeverage(leverage, symbol);
 
-      await exchange.setLeverage(useLeverage, symbol);
-
-      pinoLogger.info(`Setting leverage for ${symbol} to ${useLeverage}x`);
+      pinoLogger.info(`Setting leverage for ${symbol} to ${leverage}x`);
     } catch (error) {
       pinoLogger.error(`Failed to set leverage for ${symbol}:`, error);
+
+      const errorMessage = `❌ Ошибка установки плеча для ${symbol}: ${leverage}x\nОшибка: ${error}`;
+
+      try {
+        await this.notificationService.sendErrorNotification(
+          errorMessage,
+          `Leverage setting for ${symbol}`
+        );
+      } catch (notificationError) {
+        pinoLogger.error(
+          "Failed to send leverage error notification:",
+          notificationError
+        );
+      }
     }
   }
 
@@ -178,9 +200,11 @@ export class ExchangeService {
     }
 
     try {
-      const exchange = this.getExchangeForChat(signal.sourceChatId);
+      const exchangeAccountService = this.getExchangeAccountServiceByChatId(
+        signal.sourceChatId
+      );
 
-      if (!exchange) {
+      if (!exchangeAccountService) {
         pinoLogger.error(
           `No exchange account configured for chat ${signal.sourceChatId}`
         );
@@ -190,12 +214,15 @@ export class ExchangeService {
 
       await this.setLeverage(
         signal.symbol,
-        signal.leverage,
+        signal.leverage || undefined,
         signal.sourceChatId
       );
 
       const orderRequest = this.buildOrderRequest(signal);
-      const result = await this.executeOrder(orderRequest, exchange);
+      const result = await this.executeOrder(
+        orderRequest,
+        exchangeAccountService
+      );
 
       if (result) {
         pinoLogger.info(
@@ -214,7 +241,7 @@ export class ExchangeService {
   private buildOrderRequest(signal: TradingSignal): OrderRequest {
     const quantity = this.calculatePositionSize(signal);
     const side = signal.action === "close" ? "sell" : signal.action;
-    const positionSide = this.determinePositionSide(signal.action);
+    const positionSide = this.determinePositionSide(signal.action || undefined);
 
     const orderRequest: OrderRequest = {
       symbol: signal.symbol!,
@@ -340,15 +367,17 @@ export class ExchangeService {
     chatId?: number
   ): Promise<boolean> {
     try {
-      const exchange = chatId
-        ? this.getExchangeForChat(chatId)
+      const exchangeAccountService = chatId
+        ? this.getExchangeAccountServiceByChatId(chatId)
         : this.exchanges.get("primary");
 
-      if (!exchange) {
+      if (!exchangeAccountService) {
         return false;
       }
 
-      const positions = await exchange.fetchPositions(symbol ? [symbol] : []);
+      const positions = await exchangeAccountService.fetchPositions(
+        symbol ? [symbol] : []
+      );
 
       let position;
       if (positionSide) {
@@ -364,7 +393,7 @@ export class ExchangeService {
           positionSide: position.side,
         };
 
-        const closeOrder = await exchange.createOrder(
+        const closeOrder = await exchangeAccountService.createOrder(
           symbol,
           "market",
           position.side === "long" ? "sell" : "buy",
@@ -388,15 +417,15 @@ export class ExchangeService {
 
   async getOpenOrders(symbol?: string, chatId?: number): Promise<any[]> {
     try {
-      const exchange = chatId
-        ? this.getExchangeForChat(chatId)
+      const exchangeAccountService = chatId
+        ? this.getExchangeAccountServiceByChatId(chatId)
         : this.exchanges.get("primary");
 
-      if (!exchange) {
+      if (!exchangeAccountService) {
         return [];
       }
 
-      return await exchange.fetchOpenOrders(symbol);
+      return await exchangeAccountService.fetchOpenOrders(symbol);
     } catch (error) {
       pinoLogger.error("Failed to get open orders:", error);
 
@@ -410,15 +439,15 @@ export class ExchangeService {
     chatId?: number
   ): Promise<boolean> {
     try {
-      const exchange = chatId
-        ? this.getExchangeForChat(chatId)
+      const exchangeAccountService = chatId
+        ? this.getExchangeAccountServiceByChatId(chatId)
         : this.exchanges.get("primary");
 
-      if (!exchange) {
+      if (!exchangeAccountService) {
         return false;
       }
 
-      await exchange.cancelOrder(orderId, symbol);
+      await exchangeAccountService.cancelOrder(orderId, symbol);
       pinoLogger.info(`Cancelled order: ${orderId}`);
 
       return true;
@@ -431,15 +460,17 @@ export class ExchangeService {
 
   async getPositions(symbol?: string, chatId?: number): Promise<any[]> {
     try {
-      const exchange = chatId
-        ? this.getExchangeForChat(chatId)
+      const exchangeAccountService = chatId
+        ? this.getExchangeAccountServiceByChatId(chatId)
         : this.exchanges.get("primary");
 
-      if (!exchange) {
+      if (!exchangeAccountService) {
         return [];
       }
 
-      const positions = await exchange.fetchPositions(symbol ? [symbol] : []);
+      const positions = await exchangeAccountService.fetchPositions(
+        symbol ? [symbol] : []
+      );
 
       return positions.filter((p: any) => (p as any).size > 0);
     } catch (error) {
@@ -449,8 +480,8 @@ export class ExchangeService {
     }
   }
 
-  async getTradingConfig(): Promise<TradingConfig | null> {
-    return this.tradingConfig;
+  async getTradingConfig(): Promise<Nullable<TradingConfig>> {
+    return this.firebaseService.getTradingConfig();
   }
 
   async updateTradingConfig(updates: Partial<TradingConfig>): Promise<void> {

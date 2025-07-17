@@ -31,6 +31,13 @@ jest.mock("../src/services/firebase", () => ({
   TradingConfig: jest.fn(),
 }));
 jest.mock("../src/services/logger");
+jest.mock("../src/services/notificationService", () => ({
+  NotificationService: jest.fn().mockImplementation(() => ({
+    sendErrorNotification: jest.fn().mockResolvedValue(undefined),
+    sendSignalResult: jest.fn().mockResolvedValue(undefined),
+    sendLogMessage: jest.fn().mockResolvedValue(undefined),
+  })),
+}));
 
 const mockFirebaseService = {
   getTradingConfig: jest.fn(),
@@ -44,10 +51,15 @@ describe("ExchangeService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    exchangeService = new ExchangeService("test_user_id");
+    const mockNotificationService =
+      new (require("../src/services/notificationService").NotificationService)();
+    exchangeService = new ExchangeService(
+      "test_user_id",
+      mockNotificationService
+    );
   });
 
-  describe("getExchangeForChat", () => {
+  describe("getExchangeAccountServiceByChatId", () => {
     it("should return primary exchange for primary chat ID", () => {
       const signal = {
         sourceChatId: 123456,

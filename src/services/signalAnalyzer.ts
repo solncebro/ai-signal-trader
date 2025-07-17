@@ -1,44 +1,14 @@
 import axios from "axios";
+import { openaiApiKey } from "../config";
 import {
+  MultipleTradingSignals,
   TelegramMessage,
   TradingSignal,
-  MultipleTradingSignals,
 } from "../types";
-import { openaiApiKey } from "../config";
 import pinoLogger from "./logger";
 
 export class SignalAnalyzer {
   private readonly openaiApiUrl = "https://api.openai.com/v1/chat/completions";
-
-  async analyzeMessage(message: TelegramMessage): Promise<TradingSignal> {
-    try {
-      const multipleSignals = await this.analyzeMessageForMultipleSignals(
-        message
-      );
-
-      if (multipleSignals.signals.length === 0) {
-        return {
-          isSignal: false,
-          orderType: "market",
-          sourceChatId: message.chatId,
-          confidence: 0,
-          rawMessage: message.text || "",
-        };
-      }
-
-      return multipleSignals.signals[0];
-    } catch (error) {
-      pinoLogger.error("Failed to analyze message:", error);
-
-      return {
-        isSignal: false,
-        orderType: "market",
-        sourceChatId: message.chatId,
-        confidence: 0,
-        rawMessage: message.text || "",
-      };
-    }
-  }
 
   async analyzeMessageForMultipleSignals(
     message: TelegramMessage
@@ -64,14 +34,14 @@ export class SignalAnalyzer {
                 "signals": [
                   {
                     "isSignal": boolean,
-                    "action": "buy" | "sell" | "close" | null,
-                    "symbol": "BTC/USDT" | null,
-                    "price": number | null,
-                    "stopLoss": number | null,
-                    "takeProfit": number | null,
-                    "quantity": number | null,
+                    "action": "buy" | "sell" | "close" | Nullable<string>,
+                    "symbol": "BTC/USDT" | Nullable<string>,
+                    "price": number | Nullable<number>,
+                    "stopLoss": number | Nullable<number>,
+                    "takeProfit": number | Nullable<number>,
+                    "quantity": number | Nullable<number>,
                     "orderType": "market" | "limit",
-                    "leverage": number | null,
+                    "leverage": number | Nullable<number>,
                     "confidence": number (0-1),
                     "reasoning": string
                   }
@@ -111,7 +81,7 @@ export class SignalAnalyzer {
       const content = response.data.choices[0].message.content;
       const parsed = JSON.parse(content);
 
-      const signals: TradingSignal[] = (parsed.signals || []).map(
+      const signalList: TradingSignal[] = (parsed.signals || []).map(
         (signal: any) => ({
           isSignal: signal.isSignal,
           action: signal.action,
@@ -129,10 +99,10 @@ export class SignalAnalyzer {
       );
 
       return {
-        signals,
+        signalList,
         sourceChatId: message.chatId,
         rawMessage: message.text || "",
-        hasMultipleSignals: parsed.hasMultipleSignals || signals.length > 1,
+        hasMultipleSignals: parsed.hasMultipleSignals || signalList.length > 1,
       };
     } catch (error) {
       pinoLogger.error(
@@ -141,32 +111,12 @@ export class SignalAnalyzer {
       );
 
       return {
-        signals: [],
+        signalList: [],
         sourceChatId: message.chatId,
         rawMessage: message.text || "",
         hasMultipleSignals: false,
       };
     }
-  }
-
-  private buildPrompt(message: TelegramMessage): string {
-    let prompt = `Analyze the following message and determine if it is a trading signal:\n\n`;
-
-    if (message.text) {
-      prompt += `Text: ${message.text}\n\n`;
-    }
-
-    if (message.photo) {
-      prompt += `Message contains an image (base64: ${message.photo.substring(
-        0,
-        100
-      )}...)\n\n`;
-    }
-
-    prompt += `Date: ${message.date.toISOString()}\n\n`;
-    prompt += `Respond in JSON format as specified in the instructions.`;
-
-    return prompt;
   }
 
   private buildPromptForMultipleSignals(message: TelegramMessage): string {
@@ -177,13 +127,9 @@ export class SignalAnalyzer {
     }
 
     if (message.photo) {
-      prompt += `Message contains an image (base64: ${message.photo.substring(
-        0,
-        100
-      )}...)\n\n`;
+      prompt += `Photo (base64):\n${message.photo}\n\n`;
     }
 
-    prompt += `Date: ${message.date.toISOString()}\n\n`;
     prompt += `Look for multiple signals in the same message. Each signal should be a separate object in the signals array.\n`;
     prompt += `Respond in JSON format as specified in the instructions.`;
 

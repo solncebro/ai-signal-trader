@@ -1,3 +1,5 @@
+/// <reference path='../../utils.d.ts' />
+
 export interface TelegramMessage {
   id: number;
   text?: string;
@@ -8,21 +10,22 @@ export interface TelegramMessage {
 
 export interface TradingSignal {
   isSignal: boolean;
-  action?: "buy" | "sell" | "close";
-  symbol?: string;
-  price?: number;
-  stopLoss?: number;
-  takeProfit?: number;
-  quantity?: number;
+  action?: Nullable<"buy" | "sell" | "close">;
+  symbol?: Nullable<string>;
+  price?: Nullable<number>;
+  stopLoss?: Nullable<number>;
+  takeProfit?: Nullable<number>;
+  quantity?: Nullable<number>;
   orderType: "market" | "limit";
-  leverage?: number;
+  leverage?: Nullable<number>;
   sourceChatId: number;
   confidence: number;
   rawMessage: string;
+  reasoning?: Nullable<string>;
 }
 
 export interface MultipleTradingSignals {
-  signals: TradingSignal[];
+  signalList: TradingSignal[];
   sourceChatId: number;
   rawMessage: string;
   hasMultipleSignals: boolean;
@@ -50,7 +53,7 @@ export interface ExchangeAccount {
   name: string;
   apiKey: string;
   secret: string;
-  allowedChatIds: number[];
+  allowedChatIdList: number[];
 }
 
 export interface TelegramConfig {

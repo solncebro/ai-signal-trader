@@ -3,6 +3,16 @@ import { TelegramConfig, ExchangeConfig } from "../types";
 
 dotenv.config();
 
+const primaryChatIdList =
+  process.env.PRIMARY_ACCOUNT_CHAT_IDS?.split(",").map((id) =>
+    parseInt(id.trim())
+  ) || [];
+
+const secondaryChatIdList =
+  process.env.SECONDARY_ACCOUNT_CHAT_IDS?.split(",").map((id) =>
+    parseInt(id.trim())
+  ) || [];
+
 export const telegramConfig: TelegramConfig = {
   apiId: parseInt(process.env.TELEGRAM_API_ID || "0"),
   apiHash: process.env.TELEGRAM_API_HASH || "",
@@ -14,22 +24,16 @@ export const exchangeConfig: ExchangeConfig = {
   primary: {
     id: "primary",
     name: "Primary Account",
-    apiKey: process.env.EXCHANGE_API_KEY_PRIMARY || "",
-    secret: process.env.EXCHANGE_SECRET_PRIMARY || "",
-    allowedChatIds:
-      process.env.PRIMARY_ACCOUNT_CHAT_IDS?.split(",").map((id) =>
-        parseInt(id.trim())
-      ) || [],
+    apiKey: process.env.PRIMARY_API_KEY || "",
+    secret: process.env.PRIMARY_SECRET || "",
+    allowedChatIdList: primaryChatIdList,
   },
   secondary: {
     id: "secondary",
     name: "Secondary Account",
-    apiKey: process.env.EXCHANGE_API_KEY_SECONDARY || "",
-    secret: process.env.EXCHANGE_SECRET_SECONDARY || "",
-    allowedChatIds:
-      process.env.SECONDARY_ACCOUNT_CHAT_IDS?.split(",").map((id) =>
-        parseInt(id.trim())
-      ) || [],
+    apiKey: process.env.SECONDARY_API_KEY || "",
+    secret: process.env.SECONDARY_SECRET || "",
+    allowedChatIdList: secondaryChatIdList,
   },
 };
 
@@ -77,8 +81,8 @@ export function validateEnv() {
     throw new Error("Missing Telegram Bot configuration");
   }
   if (
-    exchangeConfig.primary.allowedChatIds.length === 0 &&
-    exchangeConfig.secondary.allowedChatIds.length === 0
+    exchangeConfig.primary.allowedChatIdList.length === 0 &&
+    exchangeConfig.secondary.allowedChatIdList.length === 0
   ) {
     throw new Error("No chat IDs configured for any exchange account");
   }

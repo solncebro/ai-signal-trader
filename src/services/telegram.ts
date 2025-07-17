@@ -11,8 +11,8 @@ export class TelegramService {
   private session: StringSession;
   private notificationService: NotificationService;
 
-  constructor() {
-    this.notificationService = new NotificationService();
+  constructor(notificationService: NotificationService) {
+    this.notificationService = notificationService;
     this.session = new StringSession(telegramConfig.appSession);
     this.client = new TelegramClient(
       this.session,
@@ -121,17 +121,20 @@ export class TelegramService {
   async listenForNewMessages(
     callback: (message: TelegramMessage) => void
   ): Promise<void> {
-    const allAllowedChatIds = [
-      ...exchangeConfig.primary.allowedChatIds,
-      ...exchangeConfig.secondary.allowedChatIds,
+    const allAllowedChatIdList = [
+      ...exchangeConfig.primary.allowedChatIdList,
+      ...exchangeConfig.secondary.allowedChatIdList,
     ];
 
-    if (allAllowedChatIds.length === 0) {
+    if (allAllowedChatIdList.length === 0) {
       throw new Error("No chat IDs configured for any exchange account");
     }
 
     this.client.addEventHandler(async (event: any) => {
-      if (event.message && allAllowedChatIds.includes(event.message.chatId)) {
+      if (
+        event.message &&
+        allAllowedChatIdList.includes(event.message.chatId)
+      ) {
         const message: TelegramMessage = {
           id: event.message.id,
           text: event.message.text || "",
@@ -149,7 +152,7 @@ export class TelegramService {
     });
 
     pinoLogger.info(
-      `Started listening for new messages in chats: ${allAllowedChatIds.join(
+      `Started listening for new messages in chats: ${allAllowedChatIdList.join(
         ", "
       )}`
     );
