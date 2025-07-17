@@ -1,6 +1,7 @@
 import * as ccxt from "ccxt";
 import { exchangeConfig } from "../config";
 import { OrderRequest, TradingSignal } from "../types";
+import { Nullable } from "../../utils.d";
 import pinoLogger from "./logger";
 import {
   FirebaseService,
@@ -120,7 +121,7 @@ export class ExchangeService {
 
       const balance = await exchangeAccountService.fetchBalance();
 
-      return balance[currency]?.free || 0;
+      return balance[currency]?.free ?? 0;
     } catch (error) {
       pinoLogger.error(`Failed to get ${currency} balance:`, error);
 
@@ -138,7 +139,7 @@ export class ExchangeService {
 
       const ticker = await exchange.fetchTicker(symbol);
 
-      return ticker.last || ticker.close || 0;
+      return ticker.last ?? ticker.close ?? 0;
     } catch (error) {
       pinoLogger.error(`Failed to get price for ${symbol}:`, error);
 
@@ -186,7 +187,10 @@ export class ExchangeService {
     }
   }
 
-  async executeSignal(signal: TradingSignal): Promise<boolean> {
+  async executeSignal(
+    signal: TradingSignal,
+    sourceChatId: number
+  ): Promise<boolean> {
     if (!this.tradingConfig?.isEnabled) {
       pinoLogger.info("Trading is disabled, skipping signal execution");
 
@@ -200,13 +204,12 @@ export class ExchangeService {
     }
 
     try {
-      const exchangeAccountService = this.getExchangeAccountServiceByChatId(
-        signal.sourceChatId
-      );
+      const exchangeAccountService =
+        this.getExchangeAccountServiceByChatId(sourceChatId);
 
       if (!exchangeAccountService) {
         pinoLogger.error(
-          `No exchange account configured for chat ${signal.sourceChatId}`
+          `No exchange account configured for chat ${sourceChatId}`
         );
 
         return false;
@@ -214,8 +217,8 @@ export class ExchangeService {
 
       await this.setLeverage(
         signal.symbol,
-        signal.leverage || undefined,
-        signal.sourceChatId
+        signal.leverage ?? undefined,
+        sourceChatId
       );
 
       const orderRequest = this.buildOrderRequest(signal);
@@ -241,7 +244,7 @@ export class ExchangeService {
   private buildOrderRequest(signal: TradingSignal): OrderRequest {
     const quantity = this.calculatePositionSize(signal);
     const side = signal.action === "close" ? "sell" : signal.action;
-    const positionSide = this.determinePositionSide(signal.action || undefined);
+    const positionSide = this.determinePositionSide(signal.action ?? undefined);
 
     const orderRequest: OrderRequest = {
       symbol: signal.symbol!,
@@ -281,9 +284,9 @@ export class ExchangeService {
       return signal.quantity;
     }
 
-    const balance = this.tradingConfig?.maxPositionSize || 100;
+    const balance = this.tradingConfig?.maxPositionSize ?? 100;
     const riskAmount =
-      (balance * (this.tradingConfig?.riskPercentage || 2)) / 100;
+      (balance * (this.tradingConfig?.riskPercentage ?? 2)) / 100;
 
     if (signal.price) {
       return riskAmount / signal.price;

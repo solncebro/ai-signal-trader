@@ -2,7 +2,7 @@ import { ExchangeService } from "./services/exchange";
 import { NotificationService } from "./services/notificationService";
 import { SignalAnalyzer } from "./services/signalAnalyzer";
 import { TelegramService } from "./services/telegram";
-import { TelegramMessage, TradingSignal } from "./types";
+import { TelegramMessage, TradingSignal, SendSignalResultArgs } from "./types";
 import pinoLogger from "./services/logger";
 
 class SignalTrader {
@@ -82,7 +82,11 @@ class SignalTrader {
             } ${signal.symbol}`
           );
 
-          await this.executeSignal(signal);
+          await this.executeSignal(
+            signal,
+            multipleSignals.sourceChatId,
+            multipleSignals.rawMessage
+          );
         } else {
           pinoLogger.info(
             `Signal ${i + 1}/${
@@ -101,38 +105,55 @@ class SignalTrader {
     }
   }
 
-  private async executeSignal(signal: TradingSignal): Promise<void> {
+  private async executeSignal(
+    signal: TradingSignal,
+    sourceChatId: number,
+    rawMessage: string
+  ): Promise<void> {
+    const defaultSignalResult: SendSignalResultArgs = {
+      signal,
+      sourceChatId,
+      rawMessage,
+      isSuccess: false,
+    };
+
     try {
       pinoLogger.info(
         `Executing signal: ${signal.action} ${signal.symbol} at ${signal.price}`
       );
-      const isSuccess = await this.exchangeService.executeSignal(signal);
+      const isSuccess = await this.exchangeService.executeSignal(
+        signal,
+        sourceChatId
+      );
+
+      const signalResultArgs = {
+        ...defaultSignalResult,
+        isSuccess,
+      };
 
       if (isSuccess) {
         pinoLogger.info(
           `Successfully executed signal: ${signal.action} ${signal.symbol}`
         );
 
-        await this.notificationService.sendSignalResult(signal, isSuccess);
+        await this.notificationService.sendSignalResult(signalResultArgs);
       } else {
         pinoLogger.info(
           `Signal execution failed: ${signal.action} ${signal.symbol}`
         );
 
-        await this.notificationService.sendSignalResult(
-          signal,
-          isSuccess,
-          "Order execution failed"
-        );
+        await this.notificationService.sendSignalResult({
+          ...signalResultArgs,
+          details: "Order execution failed",
+        });
       }
     } catch (error) {
       pinoLogger.error("Error executing signal:", error);
 
-      await this.notificationService.sendSignalResult(
-        signal,
-        false,
-        String(error)
-      );
+      await this.notificationService.sendSignalResult({
+        ...defaultSignalResult,
+        details: String(error),
+      });
     }
   }
 

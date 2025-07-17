@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 import pinoLogger from "./logger";
 import { firebaseConfig } from "../config";
+import { Nullable } from "../../utils.d";
 
 export interface TradingConfig {
   isEnabled: boolean;
@@ -68,7 +69,7 @@ export class FirebaseService {
       const docSnap = await docRef.get();
 
       if (docSnap.exists) {
-        const data = docSnap.data() || {};
+        const data = docSnap.data() ?? {};
         pinoLogger.info("Retrieved trading config from Firebase");
 
         return {
@@ -92,7 +93,7 @@ export class FirebaseService {
       this.unsubscribe = docRef.onSnapshot(
         (doc) => {
           if (doc.exists) {
-            const data = doc.data() || {};
+            const data = doc.data() ?? {};
             const config: TradingConfig = {
               ...defaultTradingConfig,
               ...data,

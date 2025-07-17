@@ -46,7 +46,7 @@ describe("SignalAnalyzer", () => {
           {
             message: {
               content: JSON.stringify({
-                signals: [
+                signalList: [
                   {
                     isSignal: true,
                     action: "buy",
@@ -56,7 +56,6 @@ describe("SignalAnalyzer", () => {
                     confidence: 0.9,
                   },
                 ],
-                hasMultipleSignals: false,
               }),
             },
           },
@@ -71,7 +70,6 @@ describe("SignalAnalyzer", () => {
       const result = await analyzer.analyzeMessageForMultipleSignals(message);
 
       expect(result.signalList).toHaveLength(1);
-      expect(result.hasMultipleSignals).toBe(false);
       expect(result.signalList[0].isSignal).toBe(true);
       expect(result.signalList[0].action).toBe("buy");
       expect(result.signalList[0].symbol).toBe("BTC/USDT");
@@ -103,7 +101,7 @@ describe("SignalAnalyzer", () => {
           {
             message: {
               content: JSON.stringify({
-                signals: [
+                signalList: [
                   {
                     isSignal: true,
                     action: "buy",
@@ -121,7 +119,6 @@ describe("SignalAnalyzer", () => {
                     confidence: 0.8,
                   },
                 ],
-                hasMultipleSignals: true,
               }),
             },
           },
@@ -136,7 +133,6 @@ describe("SignalAnalyzer", () => {
       const result = await analyzer.analyzeMessageForMultipleSignals(message);
 
       expect(result.signalList).toHaveLength(2);
-      expect(result.hasMultipleSignals).toBe(true);
       expect(result.signalList[0].action).toBe("buy");
       expect(result.signalList[0].symbol).toBe("BTC/USDT");
       expect(result.signalList[1].action).toBe("sell");
@@ -169,7 +165,7 @@ describe("SignalAnalyzer", () => {
           {
             message: {
               content: JSON.stringify({
-                signals: [
+                signalList: [
                   {
                     isSignal: true,
                     action: "buy",
@@ -187,7 +183,6 @@ describe("SignalAnalyzer", () => {
                     confidence: 0.8,
                   },
                 ],
-                hasMultipleSignals: true,
               }),
             },
           },
@@ -202,7 +197,6 @@ describe("SignalAnalyzer", () => {
       const result = await analyzer.analyzeMessageForMultipleSignals(message);
 
       expect(result.signalList).toHaveLength(2);
-      expect(result.hasMultipleSignals).toBe(true);
       expect(result.signalList[0].symbol).toBe("BTC/USDT");
       expect(result.signalList[1].symbol).toBe("BTC/USDT");
       expect(result.signalList[0].action).toBe("buy");
@@ -235,8 +229,7 @@ describe("SignalAnalyzer", () => {
           {
             message: {
               content: JSON.stringify({
-                signals: [],
-                hasMultipleSignals: false,
+                signalList: [],
               }),
             },
           },
@@ -251,20 +244,6 @@ describe("SignalAnalyzer", () => {
       const result = await analyzer.analyzeMessageForMultipleSignals(message);
 
       expect(result.signalList).toHaveLength(0);
-      expect(result.hasMultipleSignals).toBe(false);
-
-      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
-        expect.stringContaining("🔍 Message analysis completed")
-      );
-      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
-        expect.stringContaining("Input: 150 tokens")
-      );
-      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
-        expect.stringContaining("Output: 80 tokens")
-      );
-      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
-        expect.stringContaining("Total: 230 tokens")
-      );
     });
   });
 

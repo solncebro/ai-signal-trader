@@ -62,14 +62,12 @@ describe("ExchangeService", () => {
   describe("getExchangeAccountServiceByChatId", () => {
     it("should return primary exchange for primary chat ID", () => {
       const signal = {
-        sourceChatId: 123456,
         action: "buy",
         symbol: "BTC/USDT",
         orderType: "limit" as const,
         price: 45000,
         isSignal: true,
         confidence: 0.8,
-        rawMessage: "test",
       };
 
       const orderRequest = (exchangeService as any).buildOrderRequest(signal);
@@ -83,13 +81,11 @@ describe("ExchangeService", () => {
 
     it("should return secondary exchange for secondary chat ID", () => {
       const signal = {
-        sourceChatId: 987654,
         action: "sell",
         symbol: "ETH/USDT",
         orderType: "market" as const,
         isSignal: true,
         confidence: 0.8,
-        rawMessage: "test",
       };
 
       const orderRequest = (exchangeService as any).buildOrderRequest(signal);
@@ -109,9 +105,7 @@ describe("ExchangeService", () => {
         symbol: "BTC/USDT",
         price: 45000,
         orderType: "limit",
-        sourceChatId: 123456,
         confidence: 0.9,
-        rawMessage: "BUY BTC/USDT at $45000",
       };
 
       const orderRequest = (exchangeService as any).buildOrderRequest(signal);
@@ -129,9 +123,7 @@ describe("ExchangeService", () => {
         action: "sell",
         symbol: "ETH/USDT",
         orderType: "market",
-        sourceChatId: 987654,
         confidence: 0.8,
-        rawMessage: "SELL ETH/USDT NOW",
       };
 
       const orderRequest = (exchangeService as any).buildOrderRequest(signal);
@@ -150,9 +142,7 @@ describe("ExchangeService", () => {
         price: 45000,
         quantity: 0.1,
         orderType: "limit",
-        sourceChatId: 123456,
         confidence: 0.9,
-        rawMessage: "BUY 0.1 BTC/USDT at $45000",
       };
 
       const orderRequest = (exchangeService as any).buildOrderRequest(signal);
@@ -195,9 +185,7 @@ describe("ExchangeService", () => {
         symbol: "BTC/USDT",
         quantity: 0.5,
         orderType: "market",
-        sourceChatId: 123456,
         confidence: 0.9,
-        rawMessage: "BUY 0.5 BTC/USDT",
       };
 
       const size = (exchangeService as any).calculatePositionSize(signal);
@@ -212,9 +200,7 @@ describe("ExchangeService", () => {
         symbol: "BTC/USDT",
         price: 45000,
         orderType: "limit",
-        sourceChatId: 123456,
         confidence: 0.9,
-        rawMessage: "BUY BTC/USDT at $45000",
       };
 
       const size = (exchangeService as any).calculatePositionSize(signal);

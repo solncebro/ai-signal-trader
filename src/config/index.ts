@@ -6,48 +6,48 @@ dotenv.config();
 const primaryChatIdList =
   process.env.PRIMARY_ACCOUNT_CHAT_IDS?.split(",").map((id) =>
     parseInt(id.trim())
-  ) || [];
+  ) ?? [];
 
 const secondaryChatIdList =
   process.env.SECONDARY_ACCOUNT_CHAT_IDS?.split(",").map((id) =>
     parseInt(id.trim())
-  ) || [];
+  ) ?? [];
 
 export const telegramConfig: TelegramConfig = {
-  apiId: parseInt(process.env.TELEGRAM_API_ID || "0"),
-  apiHash: process.env.TELEGRAM_API_HASH || "",
-  phone: process.env.TELEGRAM_PHONE || "",
-  appSession: process.env.TELEGRAM_APP_SESSION || "",
+  apiId: parseInt(process.env.TELEGRAM_API_ID ?? "0"),
+  apiHash: process.env.TELEGRAM_API_HASH ?? "",
+  phone: process.env.TELEGRAM_PHONE ?? "",
+  appSession: process.env.TELEGRAM_APP_SESSION ?? "",
 };
 
 export const exchangeConfig: ExchangeConfig = {
   primary: {
     id: "primary",
     name: "Primary Account",
-    apiKey: process.env.PRIMARY_API_KEY || "",
-    secret: process.env.PRIMARY_SECRET || "",
+    apiKey: process.env.PRIMARY_API_KEY ?? "",
+    secret: process.env.PRIMARY_SECRET ?? "",
     allowedChatIdList: primaryChatIdList,
   },
   secondary: {
     id: "secondary",
     name: "Secondary Account",
-    apiKey: process.env.SECONDARY_API_KEY || "",
-    secret: process.env.SECONDARY_SECRET || "",
+    apiKey: process.env.SECONDARY_API_KEY ?? "",
+    secret: process.env.SECONDARY_SECRET ?? "",
     allowedChatIdList: secondaryChatIdList,
   },
 };
 
-export const openaiApiKey = process.env.OPENAI_API_KEY || "";
+export const openaiApiKey = process.env.OPENAI_API_KEY ?? "";
 
 export const firebaseConfig = {
-  projectId: process.env.FIREBASE_PROJECT_ID || "",
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL || "",
-  privateKey: process.env.FIREBASE_PRIVATE_KEY || "",
+  projectId: process.env.FIREBASE_PROJECT_ID ?? "",
+  clientEmail: process.env.FIREBASE_CLIENT_EMAIL ?? "",
+  privateKey: process.env.FIREBASE_PRIVATE_KEY ?? "",
 };
 
 export const telegramBotConfig = {
-  botToken: process.env.TELEGRAM_BOT_TOKEN || "",
-  chatId: process.env.TELEGRAM_BOT_CHAT_ID || "",
+  botToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
+  chatId: process.env.TELEGRAM_BOT_CHAT_ID ?? "",
 };
 
 export function validateEnv() {

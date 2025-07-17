@@ -147,7 +147,7 @@ export class TelegramService {
       ) {
         const message: TelegramMessage = {
           id: event.message.id,
-          text: event.message.text || "",
+          text: event.message.text ?? "",
           photo: event.message.photo
             ? await this.downloadPhoto(event.message.photo)
             : undefined,

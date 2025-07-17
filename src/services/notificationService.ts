@@ -1,9 +1,9 @@
 import axios from "axios";
-import { TradingSignal } from "../types";
-import pinoLogger from "./logger";
 import { telegramBotConfig } from "../config";
+import { SendSignalResultArgs } from "../types";
 import { getCurrentDate } from "../utils/date";
 import { truncateText } from "../utils/text";
+import pinoLogger from "./logger";
 
 export class NotificationService {
   private botToken: string;
@@ -37,33 +37,29 @@ export class NotificationService {
     }
   }
 
-  async sendSignalResult(
-    signal: TradingSignal,
-    isSuccess: boolean,
-    details?: string
-  ): Promise<void> {
+  async sendSignalResult(args: SendSignalResultArgs): Promise<void> {
     const date = getCurrentDate();
 
     let message = `<b>🔔 Signal Processing Result</b>\n\n`;
     message += `📅 <b>Time:</b> ${date}\n`;
-    message += `📱 <b>Source:</b> Chat ${signal.sourceChatId}\n`;
-    message += `📊 <b>Signal:</b> ${signal.action?.toUpperCase()} ${
-      signal.symbol
+    message += `📱 <b>Source:</b> Chat ${args.sourceChatId}\n`;
+    message += `📊 <b>Signal:</b> ${args.signal.action?.toUpperCase()} ${
+      args.signal.symbol
     }\n`;
-    message += `💰 <b>Price:</b> ${signal.price || "N/A"}\n`;
-    message += `🎯 <b>Confidence:</b> ${(signal.confidence * 100).toFixed(
+    message += `💰 <b>Price:</b> ${args.signal.price ?? "N/A"}\n`;
+    message += `🎯 <b>Confidence:</b> ${(args.signal.confidence * 100).toFixed(
       1
     )}%\n`;
-    message += `📝 <b>Message:</b> ${truncateText(signal.rawMessage, 100)}\n\n`;
+    message += `📝 <b>Message:</b> ${truncateText(args.rawMessage, 100)}\n\n`;
 
-    if (isSuccess) {
+    if (args.isSuccess) {
       message += `✅ <b>Status:</b> Successfully executed\n`;
     } else {
       message += `❌ <b>Status:</b> Failed to execute\n`;
     }
 
-    if (details) {
-      message += `📋 <b>Details:</b> ${details}\n`;
+    if (args.details) {
+      message += `📋 <b>Details:</b> ${args.details}\n`;
     }
 
     await this.sendLogMessage(message);

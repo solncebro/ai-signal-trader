@@ -1,12 +1,14 @@
 import OpenAI from "openai";
 import { openaiApiKey } from "../config";
 import {
+  LlmTradingSignalsResponse,
   MultipleTradingSignals,
   TelegramMessage,
   TradingSignal,
 } from "../types";
 import pinoLogger from "./logger";
 import { NotificationService } from "./notificationService";
+import { ensureNumber } from "../utils/number";
 
 export class SignalAnalyzer {
   private readonly openAiService: OpenAI;
@@ -38,7 +40,7 @@ export class SignalAnalyzer {
             
             Response format must be JSON:
             {
-              "signals": [
+              "signalList": [
                 {
                   "isSignal": boolean,
                   "action": "buy" | "sell" | "close" | Nullable<string>,
@@ -52,8 +54,7 @@ export class SignalAnalyzer {
                   "confidence": number (0-1),
                   "reasoning": string
                 }
-              ],
-              "hasMultipleSignals": boolean
+              ]
             }
             
             Order type (orderType):
@@ -92,38 +93,39 @@ export class SignalAnalyzer {
         await this.notificationService.sendLogMessage(tokenMessage);
       }
 
-      const parsed = JSON.parse(content);
+      const parsed: LlmTradingSignalsResponse = JSON.parse(content);
 
-      const signalList: TradingSignal[] = (parsed.signals || []).map(
-        (signal: Partial<TradingSignal>) => ({
-          isSignal: Boolean(signal.isSignal),
-          action: signal.action || undefined,
-          symbol: signal.symbol || undefined,
-          price: typeof signal.price === "number" ? signal.price : undefined,
-          stopLoss:
-            typeof signal.stopLoss === "number" ? signal.stopLoss : undefined,
-          takeProfit:
-            typeof signal.takeProfit === "number"
-              ? signal.takeProfit
-              : undefined,
-          quantity:
-            typeof signal.quantity === "number" ? signal.quantity : undefined,
-          orderType: signal.orderType === "limit" ? "limit" : "market",
-          leverage:
-            typeof signal.leverage === "number" ? signal.leverage : undefined,
-          sourceChatId: message.chatId,
-          confidence:
-            typeof signal.confidence === "number" ? signal.confidence : 0,
-          rawMessage: message.text || "",
-          reasoning: signal.reasoning || undefined,
-        })
+      const signalList: TradingSignal[] = (parsed.signalList ?? []).map(
+        (signal: Partial<TradingSignal>) => {
+          const {
+            isSignal,
+            price,
+            stopLoss,
+            takeProfit,
+            quantity,
+            orderType,
+            leverage,
+            confidence,
+          } = signal;
+
+          return {
+            ...signal,
+            isSignal: Boolean(isSignal),
+            price: ensureNumber(price),
+            stopLoss: ensureNumber(stopLoss),
+            takeProfit: ensureNumber(takeProfit),
+            quantity: ensureNumber(quantity),
+            orderType: orderType === "limit" ? "limit" : "market",
+            leverage: ensureNumber(leverage),
+            confidence: ensureNumber(confidence) ?? 0,
+          };
+        }
       );
 
       return {
         signalList,
         sourceChatId: message.chatId,
-        rawMessage: message.text || "",
-        hasMultipleSignals: parsed.hasMultipleSignals || signalList.length > 1,
+        rawMessage: message.text ?? "",
       };
     } catch (error) {
       pinoLogger.error(
@@ -134,8 +136,7 @@ export class SignalAnalyzer {
       return {
         signalList: [],
         sourceChatId: message.chatId,
-        rawMessage: message.text || "",
-        hasMultipleSignals: false,
+        rawMessage: message.text ?? "",
       };
     }
   }
