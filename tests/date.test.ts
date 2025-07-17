@@ -31,14 +31,12 @@ describe("Date Utils", () => {
       const now = new Date();
       const expected = formatDate(now);
 
-      // Mock Date constructor to return our test date
       const originalDate = global.Date;
       global.Date = jest.fn(() => now) as any;
 
       const result = getCurrentDate();
       expect(result).toBe(expected);
 
-      // Restore original Date
       global.Date = originalDate;
     });
   });

@@ -1,4 +1,4 @@
-import axios from "axios";
+import OpenAI from "openai";
 import { openaiApiKey } from "../config";
 import {
   MultipleTradingSignals,
@@ -6,9 +6,18 @@ import {
   TradingSignal,
 } from "../types";
 import pinoLogger from "./logger";
+import { NotificationService } from "./notificationService";
 
 export class SignalAnalyzer {
-  private readonly openaiApiUrl = "https://api.openai.com/v1/chat/completions";
+  private readonly openAiService: OpenAI;
+  private readonly notificationService: NotificationService;
+
+  constructor(notificationService: NotificationService) {
+    this.openAiService = new OpenAI({
+      apiKey: openaiApiKey,
+    });
+    this.notificationService = notificationService;
+  }
 
   async analyzeMessageForMultipleSignals(
     message: TelegramMessage
@@ -16,69 +25,73 @@ export class SignalAnalyzer {
     try {
       const prompt = this.buildPromptForMultipleSignals(message);
 
-      const response = await axios.post(
-        this.openaiApiUrl,
-        {
-          model: "gpt-4o-mini",
-          messages: [
+      const response = await this.openAiService.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert in extracting cryptocurrency trading signals from messages from text and/or photo. 
+            Your task is to determine if a message contains trading signals and extract all trading information from it.
+            
+            A single message may contain multiple trading signals for different symbols or the same symbol.
+            For example: "BTC/USDT BUY 45000, ETH/USDT SELL 3000" contains 2 signals.
+            
+            Response format must be JSON:
             {
-              role: "system",
-              content: `You are an expert in analyzing cryptocurrency trading signals. 
-              Your task is to determine if a message contains trading signals and extract all trading information from it.
-              
-              A single message may contain multiple trading signals for different symbols or the same symbol.
-              For example: "BTC/USDT BUY 45000, ETH/USDT SELL 3000" contains 2 signals.
-              
-              Response format must be JSON:
-              {
-                "signals": [
-                  {
-                    "isSignal": boolean,
-                    "action": "buy" | "sell" | "close" | Nullable<string>,
-                    "symbol": "BTC/USDT" | Nullable<string>,
-                    "price": number | Nullable<number>,
-                    "stopLoss": number | Nullable<number>,
-                    "takeProfit": number | Nullable<number>,
-                    "quantity": number | Nullable<number>,
-                    "orderType": "market" | "limit",
-                    "leverage": number | Nullable<number>,
-                    "confidence": number (0-1),
-                    "reasoning": string
-                  }
-                ],
-                "hasMultipleSignals": boolean
-              }
-              
-              Order type (orderType):
-              - "market" - if mentioned "market", "now", "immediately", "at market", "current price"
-              - "limit" - if a specific entry price is mentioned
-              - Default to "market" if not explicitly specified
-              
-              Leverage (leverage):
-              - Extract the leverage value if mentioned in the message (e.g. "leverage 10x", "10x", "with 10x leverage").
-              - If not specified, set leverage to null.
-              
-              If this is not a trading signal, return empty signals array and hasMultipleSignals: false.
-              
-              Always return an array of signals, even if there's only one signal.`,
-            },
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-          temperature: 0.1,
-          max_tokens: 3000,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${openaiApiKey}`,
-            "Content-Type": "application/json",
+              "signals": [
+                {
+                  "isSignal": boolean,
+                  "action": "buy" | "sell" | "close" | Nullable<string>,
+                  "symbol": "BTC/USDT" | Nullable<string>,
+                  "price": number | Nullable<number>,
+                  "stopLoss": number | Nullable<number>,
+                  "takeProfit": number | Nullable<number>,
+                  "quantity": number | Nullable<number>,
+                  "orderType": "market" | "limit",
+                  "leverage": number | Nullable<number>,
+                  "confidence": number (0-1),
+                  "reasoning": string
+                }
+              ],
+              "hasMultipleSignals": boolean
+            }
+            
+            Order type (orderType):
+            - "market" - if mentioned "buy set up", "market", "now", "immediately", "at market", "current price"
+            - "limit" - if a specific entry price is mentioned
+            - Default to "market" if not explicitly specified
+            
+            Leverage (leverage):
+            - Extract the leverage value if mentioned in the message (e.g. "leverage 10x", "10x", "with 10x leverage").
+            - If not specified, set leverage to null.
+            
+            If this is not a trading signal, return empty signals array and hasMultipleSignals: false.
+            
+            Always return an array of signals, even if there's only one signal.`,
           },
-        }
-      );
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 3000,
+      });
 
-      const content = response.data.choices[0].message.content;
+      const content = response.choices[0]?.message?.content;
+
+      if (!content) {
+        throw new Error("No content received from OpenAI");
+      }
+
+      const usage = response.usage;
+
+      if (usage) {
+        const tokenMessage = `🔍 Message analysis completed\n\n📊 Token usage:\n• Input: ${usage.prompt_tokens} tokens\n• Output: ${usage.completion_tokens} tokens\n• Total: ${usage.total_tokens} tokens`;
+
+        await this.notificationService.sendLogMessage(tokenMessage);
+      }
+
       const parsed = JSON.parse(content);
 
       const signalList: TradingSignal[] = (parsed.signals || []).map(

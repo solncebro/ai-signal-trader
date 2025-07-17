@@ -17,7 +17,7 @@ class SignalTrader {
     this.userId = userId;
     this.notificationService = new NotificationService();
     this.telegramService = new TelegramService(this.notificationService);
-    this.signalAnalyzer = new SignalAnalyzer();
+    this.signalAnalyzer = new SignalAnalyzer(this.notificationService);
     this.exchangeService = new ExchangeService(
       userId,
       this.notificationService
@@ -64,6 +64,7 @@ class SignalTrader {
 
       if (multipleSignals.signalList.length === 0) {
         pinoLogger.info("Message is not a valid trading signal");
+
         return;
       }
 
@@ -92,6 +93,7 @@ class SignalTrader {
       }
     } catch (error) {
       pinoLogger.error("Failed to handle new message:", error);
+
       await this.notificationService.sendErrorNotification(
         String(error),
         "Message Processing"

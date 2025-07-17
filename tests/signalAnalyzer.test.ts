@@ -1,8 +1,21 @@
-import axios from "axios";
 import { SignalAnalyzer } from "../src/services/signalAnalyzer";
 import type { TelegramMessage } from "../src/types";
 
-jest.mock("axios");
+const mockCreate = jest.fn();
+const mockNotificationService = {
+  sendLogMessage: jest.fn(),
+};
+
+jest.mock("openai", () => {
+  return jest.fn().mockImplementation(() => ({
+    chat: {
+      completions: {
+        create: mockCreate,
+      },
+    },
+  }));
+});
+
 jest.mock("../src/config", () => ({
   openaiApiKey: "test-api-key",
 }));
@@ -11,7 +24,9 @@ describe("SignalAnalyzer", () => {
   let analyzer: SignalAnalyzer;
 
   beforeEach(() => {
-    analyzer = new SignalAnalyzer();
+    analyzer = new SignalAnalyzer(mockNotificationService as any);
+    mockCreate.mockClear();
+    mockNotificationService.sendLogMessage.mockClear();
   });
 
   describe("analyzeMessageForMultipleSignals", () => {
@@ -23,27 +38,30 @@ describe("SignalAnalyzer", () => {
         chatId: 123456,
       };
 
-      (axios.post as jest.Mock).mockResolvedValue({
-        data: {
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  signals: [
-                    {
-                      isSignal: true,
-                      action: "buy",
-                      symbol: "BTC/USDT",
-                      price: 45000,
-                      orderType: "limit",
-                      confidence: 0.9,
-                    },
-                  ],
-                  hasMultipleSignals: false,
-                }),
-              },
+      mockCreate.mockResolvedValue({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                signals: [
+                  {
+                    isSignal: true,
+                    action: "buy",
+                    symbol: "BTC/USDT",
+                    price: 45000,
+                    orderType: "limit",
+                    confidence: 0.9,
+                  },
+                ],
+                hasMultipleSignals: false,
+              }),
             },
-          ],
+          },
+        ],
+        usage: {
+          prompt_tokens: 150,
+          completion_tokens: 80,
+          total_tokens: 230,
         },
       });
 
@@ -54,6 +72,19 @@ describe("SignalAnalyzer", () => {
       expect(result.signalList[0].isSignal).toBe(true);
       expect(result.signalList[0].action).toBe("buy");
       expect(result.signalList[0].symbol).toBe("BTC/USDT");
+
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("🔍 Message analysis completed")
+      );
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Input: 150 tokens")
+      );
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Output: 80 tokens")
+      );
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Total: 230 tokens")
+      );
     });
 
     it("should analyze multiple signals correctly", async () => {
@@ -64,35 +95,38 @@ describe("SignalAnalyzer", () => {
         chatId: 123456,
       };
 
-      (axios.post as jest.Mock).mockResolvedValue({
-        data: {
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  signals: [
-                    {
-                      isSignal: true,
-                      action: "buy",
-                      symbol: "BTC/USDT",
-                      price: 45000,
-                      orderType: "limit",
-                      confidence: 0.9,
-                    },
-                    {
-                      isSignal: true,
-                      action: "sell",
-                      symbol: "ETH/USDT",
-                      price: 3000,
-                      orderType: "limit",
-                      confidence: 0.8,
-                    },
-                  ],
-                  hasMultipleSignals: true,
-                }),
-              },
+      mockCreate.mockResolvedValue({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                signals: [
+                  {
+                    isSignal: true,
+                    action: "buy",
+                    symbol: "BTC/USDT",
+                    price: 45000,
+                    orderType: "limit",
+                    confidence: 0.9,
+                  },
+                  {
+                    isSignal: true,
+                    action: "sell",
+                    symbol: "ETH/USDT",
+                    price: 3000,
+                    orderType: "limit",
+                    confidence: 0.8,
+                  },
+                ],
+                hasMultipleSignals: true,
+              }),
             },
-          ],
+          },
+        ],
+        usage: {
+          prompt_tokens: 150,
+          completion_tokens: 80,
+          total_tokens: 230,
         },
       });
 
@@ -104,6 +138,19 @@ describe("SignalAnalyzer", () => {
       expect(result.signalList[0].symbol).toBe("BTC/USDT");
       expect(result.signalList[1].action).toBe("sell");
       expect(result.signalList[1].symbol).toBe("ETH/USDT");
+
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("🔍 Message analysis completed")
+      );
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Input: 150 tokens")
+      );
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Output: 80 tokens")
+      );
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Total: 230 tokens")
+      );
     });
 
     it("should handle multiple signals for same symbol", async () => {
@@ -114,35 +161,38 @@ describe("SignalAnalyzer", () => {
         chatId: 123456,
       };
 
-      (axios.post as jest.Mock).mockResolvedValue({
-        data: {
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  signals: [
-                    {
-                      isSignal: true,
-                      action: "buy",
-                      symbol: "BTC/USDT",
-                      price: 45000,
-                      orderType: "limit",
-                      confidence: 0.9,
-                    },
-                    {
-                      isSignal: true,
-                      action: "sell",
-                      symbol: "BTC/USDT",
-                      price: 47000,
-                      orderType: "limit",
-                      confidence: 0.8,
-                    },
-                  ],
-                  hasMultipleSignals: true,
-                }),
-              },
+      mockCreate.mockResolvedValue({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                signals: [
+                  {
+                    isSignal: true,
+                    action: "buy",
+                    symbol: "BTC/USDT",
+                    price: 45000,
+                    orderType: "limit",
+                    confidence: 0.9,
+                  },
+                  {
+                    isSignal: true,
+                    action: "sell",
+                    symbol: "BTC/USDT",
+                    price: 47000,
+                    orderType: "limit",
+                    confidence: 0.8,
+                  },
+                ],
+                hasMultipleSignals: true,
+              }),
             },
-          ],
+          },
+        ],
+        usage: {
+          prompt_tokens: 150,
+          completion_tokens: 80,
+          total_tokens: 230,
         },
       });
 
@@ -154,6 +204,19 @@ describe("SignalAnalyzer", () => {
       expect(result.signalList[1].symbol).toBe("BTC/USDT");
       expect(result.signalList[0].action).toBe("buy");
       expect(result.signalList[1].action).toBe("sell");
+
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("🔍 Message analysis completed")
+      );
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Input: 150 tokens")
+      );
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Output: 80 tokens")
+      );
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Total: 230 tokens")
+      );
     });
 
     it("should handle non-signal messages", async () => {
@@ -164,18 +227,21 @@ describe("SignalAnalyzer", () => {
         chatId: 123456,
       };
 
-      (axios.post as jest.Mock).mockResolvedValue({
-        data: {
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  signals: [],
-                  hasMultipleSignals: false,
-                }),
-              },
+      mockCreate.mockResolvedValue({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                signals: [],
+                hasMultipleSignals: false,
+              }),
             },
-          ],
+          },
+        ],
+        usage: {
+          prompt_tokens: 150,
+          completion_tokens: 80,
+          total_tokens: 230,
         },
       });
 
@@ -183,6 +249,19 @@ describe("SignalAnalyzer", () => {
 
       expect(result.signalList).toHaveLength(0);
       expect(result.hasMultipleSignals).toBe(false);
+
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("🔍 Message analysis completed")
+      );
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Input: 150 tokens")
+      );
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Output: 80 tokens")
+      );
+      expect(mockNotificationService.sendLogMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Total: 230 tokens")
+      );
     });
   });
 

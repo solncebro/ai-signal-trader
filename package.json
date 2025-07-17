@@ -29,6 +29,7 @@
     "firebase-admin": "^13.4.0",
     "jest": "^30.0.4",
     "node-cron": "^3.0.3",
+    "openai": "^5.10.1",
     "pino": "^8.17.0",
     "telegram": "^2.19.10"
   },
