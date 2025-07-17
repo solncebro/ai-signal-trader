@@ -32,7 +32,7 @@ describe("Date Utils", () => {
       const expected = formatDate(now);
 
       const originalDate = global.Date;
-      global.Date = jest.fn(() => now) as any;
+      global.Date = jest.fn(() => now) as unknown as typeof Date;
 
       const result = getCurrentDate();
       expect(result).toBe(expected);

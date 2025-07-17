@@ -6,6 +6,16 @@ import type { TelegramMessage } from "../types";
 import pinoLogger from "./logger";
 import { NotificationService } from "./notificationService";
 
+interface TelegramEventHandlerEvent {
+  message?: {
+    id: number;
+    text?: string;
+    photo?: unknown;
+    date: number;
+    chatId: number;
+  };
+}
+
 export class TelegramService {
   private client: TelegramClient;
   private session: StringSession;
@@ -130,7 +140,7 @@ export class TelegramService {
       throw new Error("No chat IDs configured for any exchange account");
     }
 
-    this.client.addEventHandler(async (event: any) => {
+    this.client.addEventHandler(async (event: TelegramEventHandlerEvent) => {
       if (
         event.message &&
         allAllowedChatIdList.includes(event.message.chatId)

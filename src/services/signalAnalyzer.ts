@@ -95,19 +95,27 @@ export class SignalAnalyzer {
       const parsed = JSON.parse(content);
 
       const signalList: TradingSignal[] = (parsed.signals || []).map(
-        (signal: any) => ({
-          isSignal: signal.isSignal,
-          action: signal.action,
-          symbol: signal.symbol,
-          price: signal.price,
-          stopLoss: signal.stopLoss,
-          takeProfit: signal.takeProfit,
-          quantity: signal.quantity,
-          orderType: signal.orderType || "market",
-          leverage: signal.leverage === null ? undefined : signal.leverage,
+        (signal: Partial<TradingSignal>) => ({
+          isSignal: Boolean(signal.isSignal),
+          action: signal.action || undefined,
+          symbol: signal.symbol || undefined,
+          price: typeof signal.price === "number" ? signal.price : undefined,
+          stopLoss:
+            typeof signal.stopLoss === "number" ? signal.stopLoss : undefined,
+          takeProfit:
+            typeof signal.takeProfit === "number"
+              ? signal.takeProfit
+              : undefined,
+          quantity:
+            typeof signal.quantity === "number" ? signal.quantity : undefined,
+          orderType: signal.orderType === "limit" ? "limit" : "market",
+          leverage:
+            typeof signal.leverage === "number" ? signal.leverage : undefined,
           sourceChatId: message.chatId,
-          confidence: signal.confidence,
+          confidence:
+            typeof signal.confidence === "number" ? signal.confidence : 0,
           rawMessage: message.text || "",
+          reasoning: signal.reasoning || undefined,
         })
       );
 

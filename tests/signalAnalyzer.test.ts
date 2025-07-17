@@ -1,8 +1,9 @@
 import { SignalAnalyzer } from "../src/services/signalAnalyzer";
 import type { TelegramMessage } from "../src/types";
+import { NotificationService } from "../src/services/notificationService";
 
 const mockCreate = jest.fn();
-const mockNotificationService = {
+const mockNotificationService: Partial<NotificationService> = {
   sendLogMessage: jest.fn(),
 };
 
@@ -24,9 +25,11 @@ describe("SignalAnalyzer", () => {
   let analyzer: SignalAnalyzer;
 
   beforeEach(() => {
-    analyzer = new SignalAnalyzer(mockNotificationService as any);
+    analyzer = new SignalAnalyzer(
+      mockNotificationService as NotificationService
+    );
     mockCreate.mockClear();
-    mockNotificationService.sendLogMessage.mockClear();
+    (mockNotificationService.sendLogMessage as jest.Mock).mockClear();
   });
 
   describe("analyzeMessageForMultipleSignals", () => {
