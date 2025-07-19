@@ -15,6 +15,7 @@ export class ExchangeService {
   private firebaseService: FirebaseService;
   private tradingConfig: Nullable<TradingConfig> = null;
   private notificationService: NotificationService;
+  private defaultLeverage: number = 5;
 
   constructor(userId: string, notificationService: NotificationService) {
     this.firebaseService = new FirebaseService(userId);
@@ -24,23 +25,17 @@ export class ExchangeService {
   private getExchangeAccountServiceByChatId(
     chatId: number
   ): Nullable<ccxt.binance> {
-    const accounts = [exchangeConfig.primary, exchangeConfig.secondary];
+    const accountList = [exchangeConfig.primary, exchangeConfig.secondary];
 
-    for (const account of accounts) {
+    for (const account of accountList) {
       if (account.allowedChatIdList.includes(chatId)) {
-        const exchange = this.exchanges.get(account.id);
+        const exchangeAccountService = this.exchanges.get(account.id);
 
-        if (exchange) {
-          pinoLogger.info(
-            `Using exchange account: ${account.name} for chat ${chatId}`
-          );
-
-          return exchange;
+        if (exchangeAccountService) {
+          return exchangeAccountService;
         }
       }
     }
-
-    pinoLogger.info(`No exchange account found for chat ${chatId}`);
 
     return null;
   }
@@ -197,27 +192,33 @@ export class ExchangeService {
       return false;
     }
 
-    if (!signal.action || !signal.symbol) {
-      pinoLogger.info("Invalid signal, skipping execution");
+    const { action, symbol, leverage } = signal;
+
+    if (!action || !symbol) {
+      pinoLogger.info("Invalid symbol or action, skipping execution");
 
       return false;
     }
 
+    const exchangeAccountService =
+      this.getExchangeAccountServiceByChatId(sourceChatId);
+
+    if (!exchangeAccountService) {
+      pinoLogger.error(
+        `No exchange account service found for chat ${sourceChatId}`
+      );
+
+      return false;
+    }
+
+    pinoLogger.info(
+      `Using exchange account service: ${exchangeAccountService.name} for chat ${sourceChatId}`
+    );
+
     try {
-      const exchangeAccountService =
-        this.getExchangeAccountServiceByChatId(sourceChatId);
-
-      if (!exchangeAccountService) {
-        pinoLogger.error(
-          `No exchange account configured for chat ${sourceChatId}`
-        );
-
-        return false;
-      }
-
       await this.setLeverage(
-        signal.symbol,
-        signal.leverage ?? undefined,
+        symbol,
+        leverage ?? this.defaultLeverage,
         sourceChatId
       );
 
@@ -297,14 +298,14 @@ export class ExchangeService {
 
   private async executeOrder(
     orderRequest: OrderRequest,
-    exchange: ccxt.binance
+    exchangeAccountService: ccxt.binance
   ): Promise<boolean> {
     try {
       const orderParams: any = {
         positionSide: orderRequest.positionSide,
       };
 
-      const order = await exchange.createOrder(
+      const order = await exchangeAccountService.createOrder(
         orderRequest.symbol,
         orderRequest.type,
         orderRequest.side,
@@ -323,7 +324,7 @@ export class ExchangeService {
           stopPrice: orderRequest.stopLoss,
         };
 
-        const stopOrder = await exchange.createOrder(
+        const stopOrder = await exchangeAccountService.createOrder(
           orderRequest.symbol,
           "stop",
           orderRequest.side === "buy" ? "sell" : "buy",
@@ -342,7 +343,7 @@ export class ExchangeService {
           positionSide: orderRequest.positionSide,
         };
 
-        const takeProfitOrder = await exchange.createOrder(
+        const takeProfitOrder = await exchangeAccountService.createOrder(
           orderRequest.symbol,
           "limit",
           orderRequest.side === "buy" ? "sell" : "buy",

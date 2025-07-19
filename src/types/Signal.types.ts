@@ -19,7 +19,7 @@ export interface MultipleTradingSignals {
   rawMessage: string;
 }
 
-export interface SendSignalResultArgs {
+export interface SignalData {
   signal: TradingSignal;
   isSuccess: boolean;
   sourceChatId: number;

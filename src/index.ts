@@ -1,9 +1,9 @@
 import { ExchangeService } from "./services/exchange";
+import pinoLogger from "./services/logger";
 import { NotificationService } from "./services/notificationService";
 import { SignalAnalyzer } from "./services/signalAnalyzer";
 import { TelegramService } from "./services/telegram";
-import { TelegramMessage, TradingSignal, SendSignalResultArgs } from "./types";
-import pinoLogger from "./services/logger";
+import { SignalData, TelegramMessage } from "./types";
 import { isSignalValid } from "./utils/other";
 
 class SignalTrader {
@@ -81,7 +81,14 @@ class SignalTrader {
             }`
           );
 
-          await this.executeSignal(signal, sourceChatId, rawMessage);
+          const defaultSignalData: SignalData = {
+            signal,
+            sourceChatId,
+            rawMessage,
+            isSuccess: false,
+          };
+
+          await this.hadnleSignal(defaultSignalData);
         } else {
           pinoLogger.info(
             `Signal ${i + 1}/${signalList.length} has low confidence: ${
@@ -100,17 +107,8 @@ class SignalTrader {
     }
   }
 
-  private async executeSignal(
-    signal: TradingSignal,
-    sourceChatId: number,
-    rawMessage: string
-  ): Promise<void> {
-    const defaultSignalResult: SendSignalResultArgs = {
-      signal,
-      sourceChatId,
-      rawMessage,
-      isSuccess: false,
-    };
+  private async hadnleSignal(signalData: SignalData): Promise<void> {
+    const { signal, sourceChatId } = signalData;
 
     try {
       pinoLogger.info(
@@ -121,32 +119,30 @@ class SignalTrader {
         sourceChatId
       );
 
-      const signalResultArgs = {
-        ...defaultSignalResult,
+      const signalResult = {
+        ...signalData,
         isSuccess,
       };
 
-      if (isSuccess) {
-        pinoLogger.info(
-          `Successfully executed signal: ${signal.action} ${signal.symbol}`
-        );
+      const message = isSuccess
+        ? `Successfully executed signal: ${signal.action} ${signal.symbol}`
+        : `Signal execution failed: ${signal.action} ${signal.symbol}`;
 
-        await this.notificationService.sendSignalResult(signalResultArgs);
-      } else {
-        pinoLogger.info(
-          `Signal execution failed: ${signal.action} ${signal.symbol}`
-        );
+      const signalResultArgs = isSuccess
+        ? signalResult
+        : {
+            ...signalResult,
+            details: "Order execution failed",
+          };
 
-        await this.notificationService.sendSignalResult({
-          ...signalResultArgs,
-          details: "Order execution failed",
-        });
-      }
+      pinoLogger.info(message);
+
+      await this.notificationService.sendSignalResult(signalResultArgs);
     } catch (error) {
       pinoLogger.error("Error executing signal:", error);
 
       await this.notificationService.sendSignalResult({
-        ...defaultSignalResult,
+        ...signalData,
         details: String(error),
       });
     }

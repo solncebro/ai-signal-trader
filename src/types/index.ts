@@ -6,7 +6,7 @@ export {
   TelegramConfig,
 } from "./Config.types";
 export {
-  SendSignalResultArgs,
+  SignalData,
   MultipleTradingSignals,
   TradingSignal,
   LlmTradingSignalsResponse,
